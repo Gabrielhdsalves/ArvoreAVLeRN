@@ -1,6 +1,7 @@
 #include "rubroNegra.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include "funcoesBasicas.h"
 
 struct no {
     int chave;
@@ -34,6 +35,7 @@ rubro *arvRNcriaRubro() {
     arvRN->nulo = (no*) malloc(sizeof(no));
 
     if(!arvRN->nulo) {
+        free(arvRN->sentinela);
         free(arvRN);
         return NULL;
     }
@@ -41,7 +43,7 @@ rubro *arvRNcriaRubro() {
     arvRN->qtdElementos = 0;
 
     // Sentinela
-    arvRN->sentinela->Fdir = arvRN->sentinela->Fesq = arvRN->sentinela->pai = NULL;
+    arvRN->sentinela->Fdir = arvRN->sentinela->Fesq = arvRN->sentinela->pai = arvRN->nulo;
     arvRN->sentinela->cor = 'P';
     arvRN->sentinela->chave = -1000;
 
@@ -55,16 +57,16 @@ rubro *arvRNcriaRubro() {
 
 //Cria um novo nó e retorna um ponteiro para ele
 no *arvRNcriaNo(int chave, rubro *arvRN){
-    no *novoNo = (no*) malloc(sizeof (no));
+    no *novoNo = (no*) malloc(sizeof(no));
 
-    if(novoNo){
+    if(novoNo) {
         novoNo->chave = chave;
         novoNo->Fdir = novoNo->Fesq = arvRN->nulo;
         novoNo->pai = arvRN->sentinela;
         novoNo->cor = 'V';
         arvRN->qtdElementos++;
     } else {
-        printf("Erro ao Alocar no!");
+        printf("Erro ao Alocar no!\n");
         return NULL;
     }
 
@@ -72,7 +74,7 @@ no *arvRNcriaNo(int chave, rubro *arvRN){
 }
 
 //Função para inserir um novo nó na árvora, retorna 0 caso haja algum erro e retorna 1 caso seja feita a inserção
-int arvRNinsereNo(rubro *arvRN, int chave) {
+int arvRNinsereNo(rubro *arvRN, int chave, resultados *results) {
     no *novoNo = arvRNcriaNo(chave, arvRN);
     no *aux;
 
@@ -80,7 +82,7 @@ int arvRNinsereNo(rubro *arvRN, int chave) {
         return 0;
     }
 
-    if(!arvRN->sentinela->Fdir) {
+    if(arvRN->sentinela->Fdir == arvRN->nulo) {
         arvRN->sentinela->Fdir = novoNo;
         novoNo->cor = 'P';
         return 1;
@@ -88,7 +90,7 @@ int arvRNinsereNo(rubro *arvRN, int chave) {
 
     aux = arvRN->sentinela->Fdir;
 
-    while(aux && aux != arvRN->nulo) {
+    while(aux != arvRN->nulo) {
         novoNo->pai = aux;
         if(aux->chave > chave) {
             aux = aux->Fesq;
@@ -104,7 +106,7 @@ int arvRNinsereNo(rubro *arvRN, int chave) {
     }
 
     if(novoNo->pai->cor == 'V') {
-        arvRNatualizaCor_Insercao(arvRN, novoNo);
+        arvRNatualizaCor_Insercao(arvRN, novoNo, results);
     }
 
     return 1;
@@ -122,7 +124,6 @@ void arvRNtransplanta(rubro *arvRN, no *u, no *v) {
 }
 
 no* arvRNprocuraSucessor(no *x, rubro *arvRN) {
-
     while (x->Fesq != arvRN->nulo) {
         x = x->Fesq;
     }
@@ -130,7 +131,7 @@ no* arvRNprocuraSucessor(no *x, rubro *arvRN) {
 }
 
 //Função para remover um nó da árvore rubronegra, retorna 0 em caso de erro na remoção e 1 em caso de sucesso
-int arvRNremoveNo(rubro *arvRN, int chave) {
+int arvRNremoveNo(rubro *arvRN, int chave, resultados *results) {
     no *noRemovido = arvRN->sentinela->Fdir;
     no *x, *sucessorY;
 
@@ -145,7 +146,6 @@ int arvRNremoveNo(rubro *arvRN, int chave) {
 
     // Nó não encontrado
     if (noRemovido == arvRN->nulo) {
-        printf("O no não esta na rubro!\n");
         return 0;
     }
 
@@ -178,7 +178,7 @@ int arvRNremoveNo(rubro *arvRN, int chave) {
     }
 
     if (sucessorY_original_cor == 'P') {
-        arvRNatualizaCor_Removido(arvRN, x);
+        arvRNatualizaCor_Removido(arvRN, x, results);
     }
 
     free(noRemovido);
@@ -186,9 +186,7 @@ int arvRNremoveNo(rubro *arvRN, int chave) {
     return 1;
 }
 
-
-
-void arvRNatualizaCor_Insercao(rubro *arvRN, no *novoNo) {
+void arvRNatualizaCor_Insercao(rubro *arvRN, no *novoNo, resultados *results) {
     while (novoNo != arvRN->sentinela && novoNo->pai->cor == 'V') {
         no *pai = novoNo->pai;
         no *avo = pai->pai;
@@ -204,12 +202,14 @@ void arvRNatualizaCor_Insercao(rubro *arvRN, no *novoNo) {
             } else {
                 if (novoNo == pai->Fdir) { // Segundo caso
                     arvRNrotacaoEsquerda(arvRN, pai);
+                    addRotacoesInsercoes(results, 1, 1);
                     novoNo = pai;
                     pai = novoNo->pai;
                 } // Terceiro caso
                 pai->cor = 'P';
                 avo->cor = 'V';
                 arvRNrotacaoDireita(arvRN, avo);
+                addRotacoesInsercoes(results, 1, 1);
             }
         } else { // Direita do avô
             no *tio = avo->Fesq;
@@ -222,42 +222,48 @@ void arvRNatualizaCor_Insercao(rubro *arvRN, no *novoNo) {
             } else {
                 if (novoNo == pai->Fesq) { // Segundo caso
                     arvRNrotacaoDireita(arvRN, pai);
+                    addRotacoesInsercoes(results, 1, 1);
                     novoNo = pai;
                     pai = novoNo->pai;
                 } // Terceiro caso
                 pai->cor = 'P';
                 avo->cor = 'V';
                 arvRNrotacaoEsquerda(arvRN, avo);
+                addRotacoesInsercoes(results, 1, 1);
             }
         }
     }
     arvRN->sentinela->Fdir->cor = 'P';
 }
 
-void arvRNatualizaCor_Removido(rubro *arvRN, no *x) {
+void arvRNatualizaCor_Removido(rubro *arvRN, no *x, resultados *results) {
     while (x != arvRN->sentinela->Fdir && x->cor == 'P') {
         if (x == x->pai->Fesq) {
             no *w = x->pai->Fdir;
-            if (w->cor == 'V') {
+            if (w->cor == 'V') { // Caso 3, primeiro caso
                 w->cor = 'P';
                 x->pai->cor = 'V';
                 arvRNrotacaoEsquerda(arvRN, x->pai);
+                addRotacoesRemocoes(results, 1, 1);
                 w = x->pai->Fdir;
             }
-            if (w->Fesq->cor == 'P' && w->Fdir->cor == 'P') {
+            if (w->Fesq->cor == 'P' && w->Fdir->cor == 'P') { // Caso 3, segundo caso 1
                 w->cor = 'V';
                 x = x->pai;
             } else {
-                if (w->Fdir->cor == 'P') {
+                if (w->Fdir->cor == 'P') { // Caso 3, terceiro caso
                     w->Fesq->cor = 'P';
                     w->cor = 'V';
                     arvRNrotacaoDireita(arvRN, w);
+                    addRotacoesRemocoes(results, 1, 1);
                     w = x->pai->Fdir;
                 }
+                // Caso 3, quarto caso
                 w->cor = x->pai->cor;
                 x->pai->cor = 'P';
                 w->Fdir->cor = 'P';
                 arvRNrotacaoEsquerda(arvRN, x->pai);
+                addRotacoesRemocoes(results, 1, 1);
                 x = arvRN->sentinela->Fdir;
             }
         } else {
@@ -266,6 +272,7 @@ void arvRNatualizaCor_Removido(rubro *arvRN, no *x) {
                 w->cor = 'P';
                 x->pai->cor = 'V';
                 arvRNrotacaoDireita(arvRN, x->pai);
+                addRotacoesRemocoes(results, 1, 1);
                 w = x->pai->Fesq;
             }
             if (w->Fesq->cor == 'P' && w->Fdir->cor == 'P') {
@@ -276,12 +283,14 @@ void arvRNatualizaCor_Removido(rubro *arvRN, no *x) {
                     w->Fdir->cor = 'P';
                     w->cor = 'V';
                     arvRNrotacaoEsquerda(arvRN, w);
+                    addRotacoesRemocoes(results, 1, 1);
                     w = x->pai->Fesq;
                 }
                 w->cor = x->pai->cor;
                 x->pai->cor = 'P';
                 w->Fesq->cor = 'P';
                 arvRNrotacaoDireita(arvRN, x->pai);
+                addRotacoesRemocoes(results, 1, 1);
                 x = arvRN->sentinela->Fdir;
             }
         }
@@ -289,10 +298,8 @@ void arvRNatualizaCor_Removido(rubro *arvRN, no *x) {
     x->cor = 'P';
 }
 
-
-
-void arvRNimprimeOrdem(no *raiz){
-    if (raiz && raiz->chave != -1000){
+void arvRNimprimeOrdem(no *raiz) {
+    if (raiz && raiz->chave != -1000) {
         arvRNimprimeOrdem(raiz->Fesq);
         printf("%d - %d - %c\n", raiz->chave, raiz->pai->chave, raiz->cor);
         arvRNimprimeOrdem(raiz->Fdir);
@@ -300,7 +307,7 @@ void arvRNimprimeOrdem(no *raiz){
 }
 
 void arvRNimprimePreOrdem(no *raiz) {
-    if (raiz && raiz->chave != -1000){
+    if (raiz && raiz->chave != -1000) {
         printf("%d - %d - %c\n", raiz->chave, raiz->pai->chave, raiz->cor);
         arvRNimprimePreOrdem(raiz->Fesq);
         arvRNimprimePreOrdem(raiz->Fdir);
@@ -345,4 +352,21 @@ void arvRNrotacaoDireita(rubro *arvRN, no *x) {
     }
     y->Fdir = x;
     x->pai = y;
+}
+
+int pesquisaRubro(rubro *arvRN, int chave) {
+    no *aux = arvRN->sentinela->Fdir;
+
+    while(aux != arvRN->nulo && aux->chave != chave) {
+        if(aux->chave > chave) {
+            aux = aux->Fesq;
+        } else {
+            aux = aux->Fdir;
+        }
+    }
+
+    if(aux != arvRN->nulo && aux->chave == chave) {
+        return 1; // Nó encontrado
+    }
+    return 0;
 }

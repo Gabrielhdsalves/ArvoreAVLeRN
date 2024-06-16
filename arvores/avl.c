@@ -1,9 +1,7 @@
-//
-// Created by gabhe on 29/05/2024.
-//
 #include <stdio.h>
 #include <stdlib.h>
 #include "avl.h"
+#include "funcoesBasicas.h"
 
 struct no {
     int chave;
@@ -41,7 +39,7 @@ avl *AVLcriaArvore() {
     return arv;
 }
 
-int AVLinsereNo(avl *arv, int valor) {
+int AVLinsereNo(avl *arv, int valor, resultados *results) {
     no *novoNo = (no*) malloc(sizeof(no));
     no *aux;
 
@@ -76,7 +74,7 @@ int AVLinsereNo(avl *arv, int valor) {
         novoNo->pai->Fdir = novoNo;
     }
 
-    AVLatualizaFB_insercao(arv, novoNo);
+    AVLatualizaFB_insercao(arv, novoNo, results);
 
     return 1;
 }
@@ -85,7 +83,7 @@ int AVLinsereNo(avl *arv, int valor) {
 //Retorna 1 se o elemento foi removido
 //Retorna 0 se a árvore estiver vazia
 //Retorna -1 caso o elemento a ser removido não esteja na árvore
-int AVLremoveNo(avl *arv, int valor) {
+int AVLremoveNo(avl *arv, int valor, resultados *results) {
     no *aux;
     no *proxNo;
     int auxValor;
@@ -115,7 +113,7 @@ int AVLremoveNo(avl *arv, int valor) {
         } else {
             aux->pai->Fdir = NULL;
         }
-        AVLatualizaFB_remocao(arv, aux->pai, valor);
+        AVLatualizaFB_remocao(arv, aux->pai, valor, results);
         free(aux);
         return 1;
     }
@@ -126,7 +124,7 @@ int AVLremoveNo(avl *arv, int valor) {
             aux->pai->Fdir = aux->Fesq;
         }
         aux->Fesq->pai = aux->pai;
-        AVLatualizaFB_remocao(arv, aux->pai, valor);
+        AVLatualizaFB_remocao(arv, aux->pai, valor, results);
         free(aux);
         return 1;
     }
@@ -137,7 +135,7 @@ int AVLremoveNo(avl *arv, int valor) {
             aux->pai->Fdir = aux->Fdir;
         }
         aux->Fdir->pai = aux->pai;
-        AVLatualizaFB_remocao(arv, aux->pai, valor);
+        AVLatualizaFB_remocao(arv, aux->pai, valor, results);
         free(aux);
         return 1;
     }
@@ -166,7 +164,7 @@ int AVLremoveNo(avl *arv, int valor) {
         }
     }
 
-    AVLatualizaFB_remocao(arv, proxNo->pai, proxNo->chave);
+    AVLatualizaFB_remocao(arv, proxNo->pai, proxNo->chave, results);
     free(proxNo);
     return 1;
 }
@@ -199,7 +197,7 @@ int AVLgetNumElementos(avl *arv){
 
 
 //Função que verifica o desbalanceamento na inserção
-void AVLatualizaFB_insercao(avl *arv, no *novoNo) {
+void AVLatualizaFB_insercao(avl *arv, no *novoNo, resultados *results) {
     no *aux = novoNo;
     do {
         if(aux->pai->chave > novoNo->chave ) {
@@ -211,12 +209,12 @@ void AVLatualizaFB_insercao(avl *arv, no *novoNo) {
     } while(aux->fb != 2 && aux->fb != -2 && aux != arv->sentinela->Fdir && aux->fb != 0);
 
     if (aux->fb == 2 || aux->fb == -2){
-        AVLbalanceamento(arv, aux);
+        AVLbalanceamento(arv, aux, results, 1);
     }
 }
 
 //Função que faz o balanceamento após inseção
-void AVLbalanceamento(avl *arv, no *noDesbal) {
+void AVLbalanceamento(avl *arv, no *noDesbal, resultados *results, int tipo) {
     no *filho, *neto;
     int fbNeto;
     if(noDesbal->fb == 2) {
@@ -225,8 +223,17 @@ void AVLbalanceamento(avl *arv, no *noDesbal) {
             neto = filho->Fesq;
             fbNeto = neto->fb;
             neto->fb = 0;
+
+
             AVLrotacaoDir(filho);
             AVLrotacaoEsq(noDesbal);
+            if(tipo) { //Inserção
+                addRotacoesInsercoes(results, 0, 2);
+            } else { //Remoção
+                addRotacoesRemocoes(results, 0, 2);
+            }
+
+
             if(fbNeto == -1) {
                 filho->fb = 1;
                 noDesbal->fb = 0;
@@ -238,7 +245,16 @@ void AVLbalanceamento(avl *arv, no *noDesbal) {
                 filho->fb = 0;
             }
         } else {
+
+
             AVLrotacaoEsq(noDesbal);
+            if(tipo) { //Inserção
+                addRotacoesInsercoes(results, 0, 1);
+            } else { //Remoção
+                addRotacoesRemocoes(results, 0, 1);
+            }
+
+
             if(filho->fb == 1) {
                 noDesbal->fb = 0;
                 filho->fb = 0;
@@ -253,8 +269,17 @@ void AVLbalanceamento(avl *arv, no *noDesbal) {
             neto = filho->Fdir;
             fbNeto = neto->fb;
             neto->fb = 0;
+
+
             AVLrotacaoEsq(filho);
             AVLrotacaoDir(noDesbal);
+            if(tipo) { //Inserção
+                addRotacoesInsercoes(results, 0, 2);
+            } else { //Remoção
+                addRotacoesRemocoes(results, 0, 2);
+            }
+
+
             if(fbNeto == -1) {
                 filho->fb = 0;
                 noDesbal->fb = 1;
@@ -266,7 +291,17 @@ void AVLbalanceamento(avl *arv, no *noDesbal) {
                 filho->fb = 0;
             }
         } else {
+
             AVLrotacaoDir(noDesbal);
+            if(tipo) { //Inserção
+                addRotacoesInsercoes(results, 0, 1);
+            } else { //Remoção
+                addRotacoesRemocoes(results, 0, 1);
+            }
+
+
+
+
             if(filho->fb == -1) {
                 noDesbal->fb = 0;
                 filho->fb = 0;
@@ -316,7 +351,7 @@ void AVLrotacaoEsq(no *noDesbal) {
 }
 
 //Função que verifica o desbalanceamento na remoção
-void AVLatualizaFB_remocao(avl *arv, no *pai, int chaveRemovida) {
+void AVLatualizaFB_remocao(avl *arv, no *pai, int chaveRemovida, resultados *results) {
     no *aux = pai;
     if(aux == arv->sentinela) {
         return;
@@ -338,9 +373,26 @@ void AVLatualizaFB_remocao(avl *arv, no *pai, int chaveRemovida) {
     }
 
     if(aux->fb == 2 || aux->fb == -2) {
-        AVLbalanceamento(arv, aux);
+        AVLbalanceamento(arv, aux, results, 0);
         if((aux->pai != arv->sentinela ) && (aux->pai->fb == 0)) {
-            AVLatualizaFB_remocao(arv, aux->pai->pai, chaveRemovida);
+            AVLatualizaFB_remocao(arv, aux->pai->pai, chaveRemovida, results);
         }
     }
+}
+
+int pesquisaAVL(avl *arv, int chave) {
+    no *aux = arv->sentinela->Fdir;
+
+    while(aux && aux->chave != chave) {
+        if(aux->chave > chave) {
+            aux = aux->Fesq;
+        } else {
+            aux = aux->Fdir;
+        }
+    }
+
+    if(aux && aux->chave == chave) {
+        return 1; // Nó encontrado
+    }
+    return 0;
 }
