@@ -182,7 +182,7 @@ void geraVetorAleatorio(char *nomeArq, int maxValor){
 
     srand(time(NULL));
 
-    for (int i = 0; i < 1000; i++) {
+    for (int i = 0; i < maxValor; i++) {
         fprintf(arquivo, "%d\n", rand() % maxValor);
     }
 
